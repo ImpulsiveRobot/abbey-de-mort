@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abbaye de Mort — Abbey of Death | Story-Driven WWII FPS</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="game-shell">
+    <!-- 3D WebGL2 Viewport & Crisp 2D Weapon/HUD Overlay -->
+    <canvas id="gl-canvas" aria-label="Abbaye de Mort 3D game world"></canvas>
+    <canvas id="weapon-canvas" aria-hidden="true"></canvas>
+
+    <!-- Centralized polite live region for radio transmissions & objective changes -->
+    <div id="sr-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Title / Prologue Screen -->
+    <section id="title-screen" aria-labelledby="game-title">
+      <div class="title-card">
+        <p class="eyebrow">Central France • Border of Free France • November 1943</p>
+        <h1 id="game-title"><span lang="fr">Abbaye de Mort</span></h1>
+        <p class="subtitle">The Abbey of Death — A Story-Driven First-Person Shooter</p>
+
+        <canvas id="title-vignette" width="540" height="175" aria-hidden="true"></canvas>
+
+        <p class="prologue-copy">
+          Clutching stolen German troop-movement charts, English spy <strong>Alistair Finch</strong> flees across the Free France border onto a sheer <strong>100-meter limestone outcrop</strong>. Inside the ruined abbey waits <strong>Abbot Henri</strong>, the last monk alive with a hidden British wireless. Hold room by room as ammunition runs dry—until the French Resistance scales the cliff face and British paratroopers race the 48-hour clock to dawn.
+        </p>
+
+        <div class="title-actions">
+          <button id="btn-start" type="button" class="btn-primary">Begin Mission</button>
+          <button id="btn-controls" type="button" class="btn-secondary">Controls &amp; Settings</button>
+        </div>
+
+        <ul class="key-strip" aria-label="Quick controls summary">
+          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</li>
+          <li><kbd>Mouse</kbd> / <kbd>←</kbd><kbd>→</kbd> Look</li>
+          <li><kbd>LMB</kbd> / <kbd>Space</kbd> Shoot</li>
+          <li><kbd>RMB</kbd> Aim</li>
+          <li><kbd>R</kbd> Reload</li>
+          <li><kbd>E</kbd> / <kbd>F</kbd> Interact</li>
+          <li><kbd>Tab</kbd> Dossier &amp; Map</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Live In-Game HUD -->
+    <div id="hud" hidden>
+      <!-- Top Left: Act, Zone & Active Objective -->
+      <header class="hud-top-left">
+        <div class="act-badge">
+          <span id="hud-act">ACT I</span>
+          <span class="sep" aria-hidden="true">•</span>
+          <span id="hud-zone">Cliffside Approach</span>
+        </div>
+        <p id="hud-objective" class="objective-text">Fight past the German vanguard and breach the Abbey Gatehouse</p>
+        <p id="hud-countdown" class="countdown-banner" hidden>
+          PARATROOPERS ETA: <strong id="hud-hours">48:00</strong> HRS
+        </p>
+      </header>
+
+      <!-- Top Right: Live Blueprint Minimap & Quick Buttons -->
+      <aside class="hud-top-right" aria-label="Tactical minimap and menu controls">
+        <canvas id="minimap-canvas" width="144" height="168" aria-hidden="true"></canvas>
+        <div class="hud-mini-actions">
+          <button id="btn-hud-dossier" type="button" class="mini-btn">Dossier [Tab]</button>
+          <button id="btn-hud-pause" type="button" class="mini-btn">Menu [P]</button>
+        </div>
+      </aside>
+
+      <!-- Center Interaction Prompt -->
+      <div id="interact-prompt" class="interact-prompt" hidden>
+        Press <kbd>E</kbd> — <span id="interact-label"></span>
+      </div>
+
+      <!-- Pointer-Lock Resume Banner (when unlocked during gameplay) -->
+      <div id="click-to-aim" class="click-to-aim" hidden>
+        Click to lock mouse &amp; aim • <kbd>←</kbd><kbd>→</kbd> turn • <kbd>Space</kbd> fire
+      </div>
+
+      <!-- Lower-Center: SOE Wireless & Character Dialogue Strip -->
+      <div id="dialogue-box" class="dialogue-box" hidden>
+        <div class="dialogue-head">
+          <span id="dialogue-code" class="speaker-code">SOE-44</span>
+          <strong id="dialogue-speaker">Agent Alistair Finch</strong>
+          <span class="radio-wave" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+        </div>
+        <p id="dialogue-text"></p>
+      </div>
+
+      <!-- Bottom Left: Health & Spy Status -->
+      <div class="hud-bottom-left">
+        <div class="stat-label">
+          <span>VITALITY</span>
+          <strong id="hud-health-num">100</strong>
+        </div>
+        <div class="bar-track" aria-hidden="true">
+          <div id="hud-health-bar" class="bar-fill"></div>
+        </div>
+        <div class="hud-meta-row">
+          <span>Enemies: <strong id="hud-enemies">0</strong></span>
+          <span>Lore: <strong id="hud-lore">0/3</strong></span>
+        </div>
+      </div>
+
+      <!-- Bottom Right: Weapon Arsenal & Ammo Scarcity Indicator -->
+      <div class="hud-bottom-right">
+        <div class="weapon-slots" aria-label="Weapons">
+          <span id="slot-1" class="w-slot active">1 Webley</span>
+          <span id="slot-2" class="w-slot locked">2 MAS-36</span>
+          <span id="slot-3" class="w-slot locked">3 Sten</span>
+        </div>
+        <div class="ammo-readout">
+          <span id="hud-mag" class="ammo-mag">6</span>
+          <span class="ammo-sep">/</span>
+          <span id="hud-reserve" class="ammo-res">24</span>
+        </div>
+        <p id="hud-weapon-name" class="weapon-name">Webley Mk IV</p>
+        <p id="hud-ammo-warn" class="ammo-warn" hidden>LOW AMMUNITION</p>
+      </div>
+    </div>
+
+    <!-- Native Modal Dialog 1: Act Story Interlude Card -->
+    <dialog id="act-dialog" aria-labelledby="act-dialog-title">
+      <div class="dialog-inner act-modal-inner">
+        <p id="act-dialog-numeral" class="eyebrow">ACT I</p>
+        <h1 id="act-dialog-title">THE OUTCROP OF DEATH</h1>
+        <p id="act-dialog-location" class="act-location"></p>
+        <canvas id="act-vignette-canvas" width="520" height="170" aria-hidden="true"></canvas>
+        <p id="act-dialog-summary" class="act-summary"></p>
+        <p id="act-dialog-note" class="act-map-note"></p>
+        <form method="dialog" class="dialog-actions">
+          <button type="submit" value="continue" class="btn-primary" autofocus>Continue Mission</button>
+        </form>
+      </div>
+    </dialog>
+
+    <!-- Native Modal Dialog 2: Intelligence Dossier, Troop Charts & Live Abbey Map -->
+    <dialog id="dossier-dialog" closedby="any" aria-labelledby="dossier-title">
+      <div class="dialog-inner dossier-modal-inner">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">SOE Field Dispatch • Classified</p>
+            <h1 id="dossier-title">Intelligence Dossier &amp; Abbey Blueprint</h1>
+          </div>
+          <form method="dialog">
+            <button type="submit" value="close" class="btn-secondary" autofocus>Close</button>
+          </form>
+        </div>
+
+        <div class="dossier-grid">
+          <figure class="dossier-panel">
+            <canvas id="troop-chart-canvas" width="420" height="230" aria-label="Stolen German troop movement chart across the Free France Demarcation Line"></canvas>
+            <figcaption>Stolen Wehrmacht Troop Charts — Free France Border Sector</figcaption>
+          </figure>
+
+          <figure class="dossier-panel">
+            <canvas id="dossier-map-canvas" width="230" height="230" aria-label="Live tactical map of Abbaye de Mort"></canvas>
+            <figcaption>Live Abbey Map — Gold: Abbot • Blue: Maquis • Red: Germans</figcaption>
+          </figure>
+        </div>
+
+        <div class="dossier-lower">
+          <section class="dossier-subpanel">
+            <h2>Recovered Field Intelligence (<span id="dossier-lore-count">0</span>/3)</h2>
+            <ul id="dossier-lore-list" class="lore-list"></ul>
+          </section>
+
+          <section class="dossier-subpanel">
+            <h2>Shortwave Wireless &amp; Story Transcript</h2>
+            <ul id="dossier-transcript" class="transcript-list"></ul>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Native Modal Dialog 3: Pause & Accessibility / Audio Settings -->
+    <dialog id="pause-dialog" closedby="any" aria-labelledby="pause-title">
+      <div class="dialog-inner pause-modal-inner">
+        <p class="eyebrow">Mission Paused</p>
+        <h1 id="pause-title">Field Controls &amp; Settings</h1>
+
+        <div class="settings-list">
+          <div class="setting-row">
+            <label for="opt-sensitivity">Mouse Look Sensitivity</label>
+            <input id="opt-sensitivity" type="range" min="0.4" max="2.4" step="0.1" value="1.0">
+          </div>
+          <div class="setting-row">
+            <label for="opt-volume">Audio Volume</label>
+            <input id="opt-volume" type="range" min="0" max="1" step="0.05" value="0.75">
+          </div>
+          <div class="setting-row">
+            <label for="opt-mute">Mute Sound</label>
+            <input id="opt-mute" type="checkbox">
+          </div>
+          <div class="setting-row">
+            <label for="opt-aim-assist">Generous Aim Assist (Trackpad Friendly)</label>
+            <input id="opt-aim-assist" type="checkbox" checked>
+          </div>
+        </div>
+
+        <div class="controls-help">
+          <h2>Controls</h2>
+          <p><strong>Move:</strong> W A S D • <strong>Look:</strong> Mouse (or Arrow Keys) • <strong>Fire:</strong> Left Click or Space • <strong>Aim:</strong> Right Click or Shift • <strong>Reload:</strong> R • <strong>Weapons:</strong> 1, 2, 3 or Scroll • <strong>Interact (Radio/Crates/Lore):</strong> E or F • <strong>Dossier &amp; Map:</strong> Tab or M</p>
+        </div>
+
+        <form method="dialog" class="dialog-actions">
+          <button type="submit" value="resume" class="btn-primary" autofocus>Resume</button>
+          <button type="submit" value="dossier" class="btn-secondary">Open Dossier</button>
+          <button type="submit" value="restart" class="btn-danger">Restart Mission</button>
+        </form>
+      </div>
+    </dialog>
+
+    <!-- Native Modal Dialog 4: Victory / Defeat Epilogue -->
+    <dialog id="ending-dialog" aria-labelledby="ending-title">
+      <div class="dialog-inner act-modal-inner">
+        <p id="ending-eyebrow" class="eyebrow">EPILOGUE</p>
+        <h1 id="ending-title">DAWN OVER ABBAYE DE MORT</h1>
+        <canvas id="ending-vignette-canvas" width="520" height="170" aria-hidden="true"></canvas>
+        <p id="ending-summary" class="act-summary"></p>
+        <dl id="ending-stats" class="ending-stats"></dl>
+        <form method="dialog" class="dialog-actions">
+          <button type="submit" value="replay" class="btn-primary" autofocus>Play Again</button>
+        </form>
+      </div>
+    </dialog>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
